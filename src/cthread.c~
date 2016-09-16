@@ -1,9 +1,9 @@
 #include <ucontext.h>
 #include <string.h>
-#include "support.h"
-#include "cdata.h"
-#include "cthread.h"
-#include "cthreadfun.h"
+#include "../include/support.h"
+#include "../include/cdata.h"
+#include "../include/cthread.h"
+#include "../include/cthreadfun.h"
 
 
 int currentTid = 1;   // id da próxima thread a ser criada
@@ -27,6 +27,7 @@ int cidentify (char *name, int size)
 } 
 
 
+int ccreate (void* (*start)(void*), void *arg)
 {
 	ucontext_t threadContext;
 	char threadStack[SIGSTKSZ];
@@ -57,7 +58,6 @@ int cidentify (char *name, int size)
 
 	//to do
 	//colocar na fila de apto
-	return 0;
 }
 
 // Função auxiliar que retorna um ticket entre 0 e 255
