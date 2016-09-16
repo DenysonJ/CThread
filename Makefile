@@ -5,7 +5,7 @@
 # regra "clean" para remover todos os objetos gerados.
 #
 # NECESSARIO adaptar este esqueleto de makefile para suas necessidades.
-#  1. Cuidado com a regra "clean" para não apagar o "fila2.o"
+#  1. Cuidado com a regra "clean" para não apagar o "support.o"
 #
 # OBSERVAR que as variáveis de ambiente consideram que o Makefile está no diretótio "cthread"
 # 
@@ -19,12 +19,12 @@ SRC_DIR=./src
 all: cthread libcthread
 
 cthread: $(SRC_DIR)/cthread.c 
-	$(CC) -c $(SRC_DIR)/cthread.c -I$(INC_DIR) $(BIN_DIR)/support.o -Wall && mv cthread.o $(BIN_DIR)
+	$(CC) -c $(SRC_DIR)/cthread.c -I$(INC_DIR) -Wall && mv cthread.o $(BIN_DIR)
 
 libcthread: cthread
 	ar crs $(LIB_DIR)/libcthread.a $(BIN_DIR)/support.o $(BIN_DIR)/cthread.o
 
 clean:
-	rm -rf $(LIB_DIR)/*.a $(BIN_DIR)/*.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~
-
+	rm -rf $(LIB_DIR)/*.a $(SRC_DIR)/*~ $(INC_DIR)/*~ *~ ## && cd $(BIN_DIR) && rm !(support.o) && cd ..
+ 
 
