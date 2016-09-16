@@ -1,9 +1,9 @@
 #include <ucontext.h>
 #include <string.h>
-#include "../include/support.h"
-#include "../include/cdata.h"
-#include "../include/cthread.h"
-#include "../include/cthreadfun.h"
+#include "support.h"
+#include "cdata.h"
+#include "cthread.h"
+#include "cthreadfun.h"
 
 
 int currentTid = 1;   // id da próxima thread a ser criada
@@ -60,7 +60,7 @@ int ccreate (void* (*start)(void*), void *arg);
 // Função auxiliar que retorna um ticket entre 0 e 255
 int getTicket ()
 {
-	return random2() % 255;
+	return Random2() % 255;
 }
 
 int firstTime ()
