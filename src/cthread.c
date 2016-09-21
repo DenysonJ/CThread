@@ -36,14 +36,55 @@ int cidentify (char *name, int size)
 	return 0;
 } 
 
-void dispatcher(ucontext_t *thread)
+void dispatcher(ucontext_t thread)
 {
-	setcontext(&thread);
+	setcontext(thread);
+}
+
+int module(int num){
+	if (num < 0)
+		return -num;
+	else 
+		return num;
 }
 
 void shceduler()
 {
+	int ticket;
+	TCB_t *winner;
+	TCB_t *threadAux;
 
+
+	//Sorteia um ticket
+	ticket = getTicket();	
+	
+	// Final da fila
+	LastFila2(filaAptos);
+	
+	// Inicializa o vencedor com o primeiro da fila 
+	winner = *filaAptos;
+
+
+	//Enquanto não chegamos no final da fila
+	while(NextFila2(filaAptos) != NULL){
+		// Percorre a fila 		
+		threadAux = *filaAptos;	
+
+		// Se a thread atual está mais próxima que o atual vencedor
+		if (module(threadAux.ticket - ticket) < module(winner.ticket - ticket)){
+		
+			winner = threadAux;
+		}
+		// senão, se tiverem o mesmo ticket pegamos o id mais
+		else if ((threadAux.ticket) == (winner.ticket)){
+			
+			if (threadAux.tid < winner.tid)
+				winner = threadAux;
+		}
+	}	
+	
+	Exec = winner;
+	dispatcher(winner->context);
 }
 
 int ccreate (void* (*start)(void*), void *arg)
@@ -151,9 +192,55 @@ int csem_init(csem_t *sem, int count)
 		return 1; // erro
 }
 
+int block(csem_t *sem)
+{
+	int error;	
+
+	//coloca a thread que está está executando na lista de bloqueados
+	error = appendFila2(sem->fila, Exec);
+
+	scheduler();	
+	
+	return error;
+}
+
+
 int cwait(csem_t *sem)
 {
+	int error = 0;	
+
 	sem->count --;
 
-	return 0;
+	//se recurso não está disponível, bloqueamos a thread que está executando
+	if (sem->count < 0)
+		error = block(sem);
+
+	return error;
+}
+
+int wakeup(sem_t *sem) 
+{
+	int error = 0;
+
+	// Primeiro da fila de bloqueados
+	FirstFila2(sem->fila);
+	
+	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
+	if (sem->fila <> NULL){
+		error = AppendFila2(filaAptos, sem->fila);	
+		error = DeleteAtIteratorFila2(sem->fila) + error;
+	}	
+}
+
+int csignal(csem_t *sem)
+{
+	int error = 0;
+		
+
+	sem->count ++;	
+	
+	if (sem->count >= 0)
+		error = wakeup(sem);
+
+	return error;
 }
