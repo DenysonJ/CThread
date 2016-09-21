@@ -54,7 +54,6 @@ void shceduler()
 	TCB_t *winner;
 	TCB_t *threadAux;
 
-
 	//Sorteia um ticket
 	ticket = getTicket();	
 	
@@ -63,7 +62,6 @@ void shceduler()
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = *filaAptos;
-
 
 	//Enquanto não chegamos no final da fila
 	while(NextFila2(filaAptos) != NULL){
