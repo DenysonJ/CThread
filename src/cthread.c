@@ -11,13 +11,18 @@ int currentTid = 1;   // id da próxima thread a ser criada
 int IsFirst = TRUE; // se é a primeira vez que estamos executando
 
 PFILA2 filaAptos; // Fila de aptos
+PFILA2 filaBlock; // Fila de bloqueados
 
-ucontext_t scheduleContext;
+TCB_t *Exec;  //Ponteiro para thread que está executando
+
+ucontext_t scheduleContext; //Contexto do escalonador para ser usado no uc_link
 
 
 int cidentify (char *name, int size)
 {
-	char* group = " Daniel Maia - 243672\n Denyson Grellert - 243676\n Felipe Tormes - 243686";
+	char* group = "Daniel Maia - 243672\nDenyson Grellert - 243676\nFelipe Tormes - 243686";
+
+	firstTime();
 
 	if (size < 0)
 		return ERROR;
@@ -31,6 +36,15 @@ int cidentify (char *name, int size)
 	return 0;
 } 
 
+void dispatcher(ucontext_t *thread)
+{
+	setcontext(&thread);
+}
+
+void shceduler()
+{
+
+}
 
 int ccreate (void* (*start)(void*), void *arg)
 {
@@ -43,6 +57,9 @@ int ccreate (void* (*start)(void*), void *arg)
 	firstTime();
 
 	threadStack = malloc(SIGSTKSZ*sizeof(char));
+
+	if (threadStack == NULL)
+		return ERROR_ALLOCATION;
 
 	// aloca espaço para estrutura da thread
 	threadTCB = malloc(sizeof(TCB_t));
@@ -60,9 +77,9 @@ int ccreate (void* (*start)(void*), void *arg)
 
 	/* modifica a estrutura para o novo fluxo criado, ao fim da execução deste fluxo,
 	retornaremos o contexto para o escalonador */
-	threadContext.uc_link         = &scheduleContext;
-	threadContext.uc_stack.ss_sp  = threadStack;
-	threadContext.uc_stack.ss_size = sizeof(threadStack);
+	threadContext.uc_link          = &scheduleContext;
+	threadContext.uc_stack.ss_sp   = threadStack;
+	threadContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
 
 	threadTCB->context = threadContext;
 
@@ -71,11 +88,13 @@ int ccreate (void* (*start)(void*), void *arg)
 
 	//coloca na fila de apto
 	error = AppendFila2(filaAptos, threadTCB);
+
+	threadTCB->tid = PROCST_APTO;
 	
-	if (error == TRUE)
-		return -1;
+	if (error != FALSE)
+		return ERROR;
 	else 	
-		return 1;
+		return threadTCB->tid;
 }
 
 // Função auxiliar que retorna um ticket entre 0 e 255
@@ -86,15 +105,33 @@ int getTicket ()
 
 int firstTime ()
 {
+	char *threadStack;
+	TCB_t *mainTCB;
+
+
 	if (IsFirst == FALSE)
 		return NOTFIRST; 
 
 	IsFirst = FALSE;
 
 	CreateFila2(filaAptos);
-	// to do
-	// criar contexto do escalonador
-	// criar estrutura pra threadmain
+
+	// cria contexto do escalonador
+	getcontext(&scheduleContext);
+	threadStack = malloc(SIGSTKSZ*sizeof(char));
+
+	scheduleContext.uc_stack.ss_sp 	 = threadStack;
+	scheduleContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
+
+	
+	// cria estrutura pra threadmain
+	mainTCB = malloc(sizeof(TCB_t));
+
+	mainTCB->tid    = 0; //main deve ter tid zero (especificação)
+	mainTCB->state  = PROCST_EXEC;
+	mainTCB->ticket = getTicket();
+
+	//contexto da main será setado no escalonador, quando ela "perder" o controle do processador
 
 	return 0;
 }
@@ -102,7 +139,8 @@ int firstTime ()
 
 int csem_init(csem_t *sem, int count)
 {
-	if (sem != NULL){
+	if (sem != NULL)
+	{
 		sem->count = count;	
 		if (!CreateFila2(sem->fila))	
 			return 0;	
@@ -119,5 +157,3 @@ int cwait(csem_t *sem)
 
 	return 0;
 }
-
-

@@ -25,6 +25,6 @@ libcthread: cthread
 	ar crs $(LIB_DIR)/libcthread.a $(BIN_DIR)/support.o $(BIN_DIR)/cthread.o
 
 clean:
-	rm -rf $(LIB_DIR)/*.a $(SRC_DIR)/*~ $(INC_DIR)/*~ *~ ## && cd $(BIN_DIR) && rm !(support.o) && cd ..
+	rm -rf $(LIB_DIR)/*.a $(SRC_DIR)/*~ $(INC_DIR)/*~ *~ && mv $(BIN_DIR)/support.o . && rm $(BIN_DIR)/*.o && mv support.o $(BIN_DIR)
  
 

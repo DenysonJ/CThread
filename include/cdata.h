@@ -19,6 +19,7 @@
 #define ERROR  	 -1
 #define NOTFIRST -2
 #define ERROR_NULL_POINTER -3
+#define ERROR_ALLOCATION -4
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB { 
