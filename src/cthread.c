@@ -7,8 +7,11 @@
 #include "cthreadfun.h"
 
 
-int currentTid = 1;   // id da próxima thread a ser criada
-int IsFirst = TRUE; // se é a primeira vez que estamos executando
+int currentTid = 1;    // id da próxima thread a ser criada
+int IsFirst = TRUE;    // se é a primeira vez que estamos executando
+
+int ReturnContext = 0; // setcontext vai executar a instrução depois de getcontext, 
+					   //quando entramos no escalonador precisamos saber se está voltando pelo setcontext
 
 PFILA2 filaAptos; // Fila de aptos
 PFILA2 filaBlock; // Fila de bloqueados
@@ -20,7 +23,7 @@ ucontext_t scheduleContext; //Contexto do escalonador para ser usado no uc_link
 
 int cidentify (char *name, int size)
 {
-	char* group = "Daniel Maia - 243672\nDenyson Grellert - 243676\nFelipe Tormes - 243686";
+	char* group = "Daniel Maia - 243672\nDenyson Grellert - 243676";
 
 	firstTime();
 
@@ -36,52 +39,71 @@ int cidentify (char *name, int size)
 	return 0;
 } 
 
-void dispatcher(ucontext_t thread)
+void dispatcher(ucontext_t *thread)
 {
 	setcontext(thread);
 }
 
-int module(int num){
-	if (num < 0)
-		return -num;
-	else 
-		return num;
-}
-
-void shceduler()
+void scheduler(int fila)
 {
 	int ticket;
 	TCB_t *winner;
-	TCB_t *threadAux;
+	TCB_t *threadAux, threadExec;
+
+	if (ReturnContext)
+		return;
+
+	getcontext(&threadExec);
+	Exec->context = threadExec;
+
+	switch(fila)
+	{
+		case PROCST_APTO:
+			//colocar thread executando no apto
+			break;
+
+		// case PROCST_EXEC:
+
+		// 	break;
+
+		case PROCST_BLOQ:
+
+			break;
+
+		case PROCST_TERMINO:
+
+			break;
+	}
 
 	//Sorteia um ticket
 	ticket = getTicket();	
 	
-	// Final da fila
-	LastFila2(filaAptos);
+	// Seta iterador no primeiro da fila
+	FirstFila2(filaAptos);
 	
 	// Inicializa o vencedor com o primeiro da fila 
-	winner = *filaAptos;
+	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
 
 	//Enquanto não chegamos no final da fila
-	while(NextFila2(filaAptos) != NULL){
+	while(!NextFila2(filaAptos))
+	{
 		// Percorre a fila 		
-		threadAux = *filaAptos;	
+		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);	
 
 		// Se a thread atual está mais próxima que o atual vencedor
-		if (module(threadAux.ticket - ticket) < module(winner.ticket - ticket)){
-		
+		if (module(threadAux.ticket - ticket) < module(winner.ticket - ticket))
 			winner = threadAux;
-		}
-		// senão, se tiverem o mesmo ticket pegamos o id mais
-		else if ((threadAux.ticket) == (winner.ticket)){
-			
+
+		// senão, se tiverem o mesmo ticket pegamos o menor id
+		else if ((threadAux.ticket) == (winner.ticket))
+		{
 			if (threadAux.tid < winner.tid)
 				winner = threadAux;
 		}
 	}	
-	
 	Exec = winner;
+
+	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);
 }
 
@@ -115,7 +137,7 @@ int ccreate (void* (*start)(void*), void *arg)
 	getcontext(&threadContext);
 
 	/* modifica a estrutura para o novo fluxo criado, ao fim da execução deste fluxo,
-	retornaremos o contexto para o escalonador */
+	retornaremos o contexto para o escalonador (uc_link) */
 	threadContext.uc_link          = &scheduleContext;
 	threadContext.uc_stack.ss_sp   = threadStack;
 	threadContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
@@ -123,7 +145,7 @@ int ccreate (void* (*start)(void*), void *arg)
 	threadTCB->context = threadContext;
 
 	// cria um novo fluxo para executar a função passada como parâmetro
-	makecontext(&threadContext, (void*) start, 1, &threadContext);
+	makecontext(&threadContext, (void*)start, 1, arg);
 
 	//coloca na fila de apto
 	error = AppendFila2(filaAptos, threadTCB);
@@ -142,6 +164,14 @@ int getTicket ()
 	return Random2() % 255;
 }
 
+int module(int num)
+{
+	if (num < 0)
+		return -num;
+	else 
+		return num;
+}
+
 int firstTime ()
 {
 	char *threadStack;
@@ -154,6 +184,7 @@ int firstTime ()
 	IsFirst = FALSE;
 
 	CreateFila2(filaAptos);
+	CreateFila2(filaBlock);
 
 	// cria contexto do escalonador
 	getcontext(&scheduleContext);
@@ -161,6 +192,8 @@ int firstTime ()
 
 	scheduleContext.uc_stack.ss_sp 	 = threadStack;
 	scheduleContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
+
+	makecontext(&scheduleContext, (void*)scheduler, 1, PROCST_TERMINO);
 
 	
 	// cria estrutura pra threadmain
@@ -170,11 +203,12 @@ int firstTime ()
 	mainTCB->state  = PROCST_EXEC;
 	mainTCB->ticket = getTicket();
 
-	//contexto da main será setado no escalonador, quando ela "perder" o controle do processador
+	Exec = mainTCB;
+
+	//contexto da main será setado no escalonador, quando ela "perder o controle" do processador
 
 	return 0;
 }
-
 
 int csem_init(csem_t *sem, int count)
 {
@@ -184,24 +218,11 @@ int csem_init(csem_t *sem, int count)
 		if (!CreateFila2(sem->fila))	
 			return 0;	
 		else 
-			return 1; // erro
+			return ERROR_CREATE_FILA; // erro
 	}
 	else 
-		return 1; // erro
+		return ERROR_NULL_POINTER; // erro
 }
-
-int block(csem_t *sem)
-{
-	int error;	
-
-	//coloca a thread que está está executando na lista de bloqueados
-	error = appendFila2(sem->fila, Exec);
-
-	scheduler();	
-	
-	return error;
-}
-
 
 int cwait(csem_t *sem)
 {
@@ -216,20 +237,6 @@ int cwait(csem_t *sem)
 	return error;
 }
 
-int wakeup(sem_t *sem) 
-{
-	int error = 0;
-
-	// Primeiro da fila de bloqueados
-	FirstFila2(sem->fila);
-	
-	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
-	if (sem->fila <> NULL){
-		error = AppendFila2(filaAptos, sem->fila);	
-		error = DeleteAtIteratorFila2(sem->fila) + error;
-	}	
-}
-
 int csignal(csem_t *sem)
 {
 	int error = 0;
@@ -240,5 +247,31 @@ int csignal(csem_t *sem)
 	if (sem->count >= 0)
 		error = wakeup(sem);
 
+	return error;
+}
+
+int wakeup(sem_t *sem) 
+{
+	int error = 0;
+
+	// Primeiro da fila de bloqueados
+	FirstFila2(sem->fila);
+	
+	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
+	if (sem->fila != NULL){
+		error = AppendFila2(filaAptos, sem->fila);	
+		error = DeleteAtIteratorFila2(sem->fila) + error;
+	}	
+}
+
+int block(csem_t *sem)
+{
+	int error;	
+
+	//coloca a thread que está está executando na lista de bloqueados
+	error = AppendFila2(sem->fila, Exec);
+
+	scheduler(PROCST_BLOQ);	
+	
 	return error;
 }
