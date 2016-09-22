@@ -15,6 +15,7 @@ int ReturnContext = 0; // setcontext vai executar a instrução depois de getcon
 
 PFILA2 filaAptos; // Fila de aptos
 PFILA2 filaBlock; // Fila de bloqueados
+PFILA2 filaEsperados; //Fila com tid de todas as threads esperadas por algum join
 
 TCB_t *Exec;  //Ponteiro para thread que está executando
 
@@ -51,7 +52,10 @@ void scheduler(int fila)
 	TCB_t *threadAux, threadExec;
 
 	if (ReturnContext)
+	{
+		ReturnContext = 0;
 		return;
+	}
 
 	getcontext(&threadExec);
 	Exec->context = threadExec;
@@ -60,18 +64,19 @@ void scheduler(int fila)
 	{
 		case PROCST_APTO:
 			//colocar thread executando no apto
+			AppendFila2(filaAptos, Exec);
 			break;
 
-		// case PROCST_EXEC:
-
+		//case PROCST_EXEC:
 		// 	break;
 
 		case PROCST_BLOQ:
-
+			AppendFila2(filaBlock, Exec);
 			break;
 
 		case PROCST_TERMINO:
-
+			free(Exec->context.uc_stack.ss_sp); //libera Stack
+			free(Exec);							//libera TCB
 			break;
 	}
 
@@ -79,7 +84,8 @@ void scheduler(int fila)
 	ticket = getTicket();	
 	
 	// Seta iterador no primeiro da fila
-	FirstFila2(filaAptos);
+	if(FirstFila2(filaAptos))
+		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
@@ -110,7 +116,7 @@ void scheduler(int fila)
 int ccreate (void* (*start)(void*), void *arg)
 {
 	int error = FALSE;
-	ucontext_t threadContext;
+	ucontext_t* threadContext;
 	char *threadStack;
 	TCB_t *threadTCB;
 
@@ -158,6 +164,18 @@ int ccreate (void* (*start)(void*), void *arg)
 		return threadTCB->tid;
 }
 
+int cyield(void)
+{
+	ReturnContext = 0;
+
+	scheduler(PROCST_APTO);
+}
+
+int cjoin(int tid)
+{
+	
+}
+
 // Função auxiliar que retorna um ticket entre 0 e 255
 int getTicket ()
 {
@@ -185,6 +203,7 @@ int firstTime ()
 
 	CreateFila2(filaAptos);
 	CreateFila2(filaBlock);
+	CreateFila2(filaEsperados);
 
 	// cria contexto do escalonador
 	getcontext(&scheduleContext);
@@ -193,8 +212,8 @@ int firstTime ()
 	scheduleContext.uc_stack.ss_sp 	 = threadStack;
 	scheduleContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
 
+	//passa como parâmetro para o escalonador a indicação que é o término da thread
 	makecontext(&scheduleContext, (void*)scheduler, 1, PROCST_TERMINO);
-
 	
 	// cria estrutura pra threadmain
 	mainTCB = malloc(sizeof(TCB_t));
@@ -202,6 +221,7 @@ int firstTime ()
 	mainTCB->tid    = 0; //main deve ter tid zero (especificação)
 	mainTCB->state  = PROCST_EXEC;
 	mainTCB->ticket = getTicket();
+	// mainTCB->context setar uc_link?
 
 	Exec = mainTCB;
 
@@ -270,6 +290,8 @@ int block(csem_t *sem)
 
 	//coloca a thread que está está executando na lista de bloqueados
 	error = AppendFila2(sem->fila, Exec);
+
+	ReturnContext = 0;
 
 	scheduler(PROCST_BLOQ);	
 	
