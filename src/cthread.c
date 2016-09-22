@@ -50,6 +50,7 @@ void scheduler(int fila)
 	int ticket;
 	TCB_t *winner;
 	TCB_t *threadAux, threadExec;
+	PFILA2 winnerAux;
 
 	if (ReturnContext)
 	{
@@ -77,6 +78,7 @@ void scheduler(int fila)
 		case PROCST_TERMINO:
 			free(Exec->context.uc_stack.ss_sp); //libera Stack
 			free(Exec);							//libera TCB
+			//liberar threads q estão sendo esperadas
 			break;
 	}
 
@@ -89,6 +91,7 @@ void scheduler(int fila)
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
+	winnerAux = filaAptos;
 
 	//Enquanto não chegamos no final da fila
 	while(!NextFila2(filaAptos))
@@ -98,16 +101,22 @@ void scheduler(int fila)
 
 		// Se a thread atual está mais próxima que o atual vencedor
 		if (module(threadAux.ticket - ticket) < module(winner.ticket - ticket))
+		{
 			winner = threadAux;
-
+			winnerAux = filaAptos;
+		}
 		// senão, se tiverem o mesmo ticket pegamos o menor id
 		else if ((threadAux.ticket) == (winner.ticket))
 		{
 			if (threadAux.tid < winner.tid)
+			{
 				winner = threadAux;
+				winnerAux = filaAptos;
+			}
 		}
 	}	
 	Exec = winner;
+	DeleteAtIteratorFila2(winnerAux); //ele está apontando para o ganhador do processador, deletando da fila de aptos
 
 	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);
@@ -278,10 +287,14 @@ int wakeup(sem_t *sem)
 	FirstFila2(sem->fila);
 	
 	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
-	if (sem->fila != NULL){
-		error = AppendFila2(filaAptos, sem->fila);	
+	if (sem->fila != NULL)
+	{
+		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila));	//getatiterator
 		error = DeleteAtIteratorFila2(sem->fila) + error;
-	}	
+		//deletar da fila de bloqueados
+	}
+
+	return error;	
 }
 
 int block(csem_t *sem)
