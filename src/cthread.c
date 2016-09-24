@@ -40,16 +40,16 @@ int cidentify (char *name, int size)
 	return 0;
 } 
 
-void dispatcher(ucontext_t *thread)
+void dispatcher(ucontext_t context)
 {
-	setcontext(thread);
+	setcontext(&context);
 }
 
 void scheduler(int fila)
 {
 	int ticket;
 	TCB_t *winner;
-	TCB_t *threadAux, threadExec;
+	TCB_t *threadAux, *threadExec;
 	PFILA2 winnerAux;
 
 	if (ReturnContext)
@@ -58,8 +58,8 @@ void scheduler(int fila)
 		return;
 	}
 
-	getcontext(&threadExec);
-	Exec->context = threadExec;
+	getcontext(&threadExec->context);
+	Exec->context = threadExec->context;
 
 	switch(fila)
 	{
@@ -100,15 +100,15 @@ void scheduler(int fila)
 		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);	
 
 		// Se a thread atual está mais próxima que o atual vencedor
-		if (module(threadAux.ticket - ticket) < module(winner.ticket - ticket))
+		if (module(threadAux->ticket - ticket) < module(winner->ticket - ticket))
 		{
 			winner = threadAux;
 			winnerAux = filaAptos;
 		}
 		// senão, se tiverem o mesmo ticket pegamos o menor id
-		else if ((threadAux.ticket) == (winner.ticket))
+		else if (module(threadAux->ticket - ticket) == module(winner->ticket - ticket))
 		{
-			if (threadAux.tid < winner.tid)
+			if (threadAux->tid < winner->tid)
 			{
 				winner = threadAux;
 				winnerAux = filaAptos;
@@ -125,7 +125,7 @@ void scheduler(int fila)
 int ccreate (void* (*start)(void*), void *arg)
 {
 	int error = FALSE;
-	ucontext_t* threadContext;
+	ucontext_t threadContext;
 	char *threadStack;
 	TCB_t *threadTCB;
 
@@ -178,11 +178,14 @@ int cyield(void)
 	ReturnContext = 0;
 
 	scheduler(PROCST_APTO);
+
+	return 0;
 }
 
 int cjoin(int tid)
 {
 	
+	return 0;
 }
 
 // Função auxiliar que retorna um ticket entre 0 e 255
@@ -279,7 +282,7 @@ int csignal(csem_t *sem)
 	return error;
 }
 
-int wakeup(sem_t *sem) 
+int wakeup(csem_t *sem) 
 {
 	int error = 0;
 
@@ -290,7 +293,7 @@ int wakeup(sem_t *sem)
 	if (sem->fila != NULL)
 	{
 		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila));	//getatiterator
-		error = DeleteAtIteratorFila2(sem->fila) + error;
+		error = DeleteAtIteratorFila2(sem->fila) + error;		
 		//deletar da fila de bloqueados
 	}
 
