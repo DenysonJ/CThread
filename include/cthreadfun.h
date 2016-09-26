@@ -9,6 +9,7 @@ int  scheduler();
 int  wakeup(csem_t *sem);
 int  block(csem_t *sem);
 int  searchTID(PFILA2 fila, int TID);
+int  deleteFila(PFILA2 fila);
 
 
 #endif

@@ -16,6 +16,7 @@ int ReturnContext = 0; // setcontext vai executar a instrução depois de getcon
 PFILA2 filaAptos; // Fila de aptos
 PFILA2 filaBlock; // Fila de bloqueados
 PFILA2 filaEsperados; //Fila com tid de todas as threads esperadas por algum join
+PFILA2 filaTerm;  //Fila com o tid das threads que terminaram
 
 TCB_t *Exec;  //Ponteiro para thread que está executando
 
@@ -26,7 +27,8 @@ int cidentify (char *name, int size)
 {
 	char* group = "Daniel Maia - 243672\nDenyson Grellert - 243676";
 
-	firstTime();
+	if(firstTime())
+		return ERROR;
 
 	if (size < 0)
 		return ERROR;
@@ -48,7 +50,9 @@ int ccreate (void* (*start)(void*), void *arg)
 	TCB_t *threadTCB;
 
 	// é a primeira vez que executamos?
-	firstTime();
+	error = firstTime();
+	if(error)
+		return error;
 
 	threadStack = malloc(SIGSTKSZ*sizeof(char));
 
@@ -93,9 +97,11 @@ int ccreate (void* (*start)(void*), void *arg)
 
 int cyield(void)
 {
-	int error;
+	int error = 0;
 
-	firstTime();
+	error = firstTime();
+	if(error)
+		return error;
 
 	ReturnContext = 0;
 
@@ -108,22 +114,31 @@ int cjoin(int tid)
 {
 	int error = 0;
 
-	firstTime();
+	error = firstTime();
+	if(error)
+		return error;
 
 	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
 		return ERROR_INVALID_TID;
 
-	if(searchTID(filaEsperados, tid)) //só pode ter um cjoin para cada thread(tid)
+	if(searchTID(filaEsperados, tid) == TRUE) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
 
+	if(searchTID(filaTerm, tid) == TRUE) //thread já terminou
+		return ERROR_INVALID_TID;
 
+	error = scheduler(PROCST_BLOQ);
 
 	return error;
 }
 
 int csem_init(csem_t *sem, int count)
 {
-	firstTime();
+	int error = 0;
+
+	error = firstTime();
+	if(error)
+		return error;
 
 	if (sem != NULL)
 	{
@@ -141,7 +156,9 @@ int cwait(csem_t *sem)
 {
 	int error = 0;	
 
-	firstTime();
+	error = firstTime();
+	if(error)
+		return error;
 
 	sem->count --;
 
@@ -156,7 +173,9 @@ int csignal(csem_t *sem)
 {
 	int error = 0;
 	
-	firstTime();		
+	error = firstTime();
+	if(error)
+		return error;		
 
 	sem->count ++;	
 	
@@ -204,9 +223,17 @@ int scheduler(int fila)
 			break;
 
 		case PROCST_TERMINO:
+			error = AppendFila2(filaTerm, Exec->tid);
+
+			if(searchTID(filaEsperados, Exec->tid) == TRUE) //tinha um cjoin para esta thread
+			{
+				//liberar thread q está esperando
+				//como saber qual estava esperando está?
+			}
+
 			free(Exec->context.uc_stack.ss_sp); //libera Stack
 			free(Exec);							//libera TCB
-			//liberar threads q estão sendo esperadas
+
 			break;
 	}
 
@@ -215,7 +242,21 @@ int scheduler(int fila)
 	
 	// Seta iterador no primeiro da fila
 	if(FirstFila2(filaAptos))
+	{
+		free(filaAptos);
+		if(GetAtIteratorFila2(filaBlock)!=NULL)
+		{
+			printf("Ainda possuem threads bloqueadas, mas nenhuma thread apta a executar\n");
+		}
+		deleteFila(filaBlock);
+		deleteFila(filaEsperados);
+		deleteFila(filaTerm);
+		free(filaBlock);
+		free(filaEsperados);
+		free(filaTerm);
+		//desalocar filas
 		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
+	}
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
@@ -255,8 +296,8 @@ int scheduler(int fila)
 
 int firstTime()
 {
-	char *threadStack;
-	TCB_t *mainTCB;
+	char *threadStack = NULL;
+	TCB_t *mainTCB = NULL;
 
 
 	if (IsFirst == FALSE)
@@ -264,13 +305,20 @@ int firstTime()
 
 	IsFirst = FALSE;
 
-	CreateFila2(filaAptos);
-	CreateFila2(filaBlock);
-	CreateFila2(filaEsperados);
+	filaAptos = malloc(sizeof(FILA2));
+	filaBlock = malloc(sizeof(FILA2));
+	filaEsperados = malloc(sizeof(FILA2));
+	filaTerm = malloc(sizeof(FILA2));
+
+	if(CreateFila2(filaAptos) || CreateFila2(filaBlock) || CreateFila2(filaEsperados) || CreateFila2(filaTerm))
+		return ERROR_CREATE_FILA;
 
 	// cria contexto do escalonador
 	getcontext(&scheduleContext);
 	threadStack = malloc(SIGSTKSZ*sizeof(char));
+
+	if(threadStack == NULL)
+		return ERROR_ALLOCATION;
 
 	scheduleContext.uc_stack.ss_sp 	 = threadStack;
 	scheduleContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
@@ -280,6 +328,9 @@ int firstTime()
 	
 	// cria estrutura pra threadmain
 	mainTCB = malloc(sizeof(TCB_t));
+
+	if(mainTCB == NULL)
+		return ERROR_ALLOCATION;
 
 	mainTCB->tid    = 0; //main deve ter tid zero (especificação)
 	mainTCB->state  = PROCST_EXEC;
@@ -329,7 +380,8 @@ int searchTID(PFILA2 fila, int TID)
 {
 	int *pTID;
 
-	FirstFila2(fila);
+	if(FirstFila2(fila))
+		return ERROR_INVALID_FILA;
 
 	do
 	{
@@ -338,27 +390,45 @@ int searchTID(PFILA2 fila, int TID)
 		if((*pTID) == TID)
 			return TRUE;
 
-	}while(!NextFila2(fila) && (*pTID)!=TID)
+	}while(!NextFila2(fila) && (*pTID)!=TID);
 
 	return FALSE;
 }
 
-int searchTID_TCB(PFILA2 fila, int TID)
+TCB_t* searchTCB(PFILA2 fila, int TID)
 {
 	TCB_t *aux;
 
-	FirstFila2(fila);
+	if(FirstFila2(fila))
+		return ERROR_INVALID_FILA;
 
 	do
 	{
-		aux = (int*)GetAtIteratorFila2(fila);
+		aux = (TCB_t*)GetAtIteratorFila2(fila);
 
 		if(aux->tid == TID)
 			return TRUE;
 
-	}while(!NextFila2(fila) && (*pTID)!=TID)
+	}while(!NextFila2(fila) && (*pTID)!=TID);
 
 	return FALSE;
+}
+
+int deleteFila(PFILA2 fila)
+{
+	if(fila)
+	{
+		do
+		{
+			FirstFila2(fila);
+			DeleteAtIteratorFila2(fila);
+
+		} while(!FirstFila2(fila));
+
+		return 0;
+	}
+	else
+		return ERROR_NULL_POINTER;
 }
 
 // Função auxiliar que retorna um ticket entre 0 e 255

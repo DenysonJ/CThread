@@ -16,13 +16,14 @@
 #define TRUE 	1
 #define FALSE 	0
 
+#define NOTFIRST 0
 #define ERROR  	 -1
-#define NOTFIRST -2
-#define ERROR_NULL_POINTER -3
-#define ERROR_ALLOCATION -4
-#define ERROR_CREATE_FILA -5
-#define ERROR_TID_USED -6
-#define ERROR_INVALID_TID -7
+#define ERROR_NULL_POINTER -2
+#define ERROR_ALLOCATION -3
+#define ERROR_CREATE_FILA -4
+#define ERROR_TID_USED -5
+#define ERROR_INVALID_TID -6
+#define ERROR_INVALID_FILA -7
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB { 
