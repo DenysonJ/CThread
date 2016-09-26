@@ -21,6 +21,8 @@
 #define ERROR_NULL_POINTER -3
 #define ERROR_ALLOCATION -4
 #define ERROR_CREATE_FILA -5
+#define ERROR_TID_USED -6
+#define ERROR_INVALID_TID -7
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB { 

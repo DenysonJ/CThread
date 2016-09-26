@@ -40,88 +40,6 @@ int cidentify (char *name, int size)
 	return 0;
 } 
 
-void dispatcher(ucontext_t context)
-{
-	setcontext(&context);
-}
-
-void scheduler(int fila)
-{
-	int ticket;
-	TCB_t *winner;
-	TCB_t *threadAux, *threadExec;
-	PFILA2 winnerAux;
-
-	if (ReturnContext)
-	{
-		ReturnContext = 0;
-		return;
-	}
-
-	getcontext(&threadExec->context);
-	Exec->context = threadExec->context;
-
-	switch(fila)
-	{
-		case PROCST_APTO:
-			//colocar thread executando no apto
-			AppendFila2(filaAptos, Exec);
-			break;
-
-		//case PROCST_EXEC:
-		// 	break;
-
-		case PROCST_BLOQ:
-			AppendFila2(filaBlock, Exec);
-			break;
-
-		case PROCST_TERMINO:
-			free(Exec->context.uc_stack.ss_sp); //libera Stack
-			free(Exec);							//libera TCB
-			//liberar threads q estão sendo esperadas
-			break;
-	}
-
-	//Sorteia um ticket
-	ticket = getTicket();	
-	
-	// Seta iterador no primeiro da fila
-	if(FirstFila2(filaAptos))
-		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
-	
-	// Inicializa o vencedor com o primeiro da fila 
-	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
-	winnerAux = filaAptos;
-
-	//Enquanto não chegamos no final da fila
-	while(!NextFila2(filaAptos))
-	{
-		// Percorre a fila 		
-		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);	
-
-		// Se a thread atual está mais próxima que o atual vencedor
-		if (module(threadAux->ticket - ticket) < module(winner->ticket - ticket))
-		{
-			winner = threadAux;
-			winnerAux = filaAptos;
-		}
-		// senão, se tiverem o mesmo ticket pegamos o menor id
-		else if (module(threadAux->ticket - ticket) == module(winner->ticket - ticket))
-		{
-			if (threadAux->tid < winner->tid)
-			{
-				winner = threadAux;
-				winnerAux = filaAptos;
-			}
-		}
-	}	
-	Exec = winner;
-	DeleteAtIteratorFila2(winnerAux); //ele está apontando para o ganhador do processador, deletando da fila de aptos
-
-	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
-	dispatcher(winner->context);
-}
-
 int ccreate (void* (*start)(void*), void *arg)
 {
 	int error = FALSE;
@@ -157,10 +75,10 @@ int ccreate (void* (*start)(void*), void *arg)
 	threadContext.uc_stack.ss_sp   = threadStack;
 	threadContext.uc_stack.ss_size = SIGSTKSZ*sizeof(char);
 
-	threadTCB->context = threadContext;
-
 	// cria um novo fluxo para executar a função passada como parâmetro
 	makecontext(&threadContext, (void*)start, 1, arg);
+
+	threadTCB->context = threadContext;
 
 	//coloca na fila de apto
 	error = AppendFila2(filaAptos, threadTCB);
@@ -175,34 +93,167 @@ int ccreate (void* (*start)(void*), void *arg)
 
 int cyield(void)
 {
+	int error;
+
+	firstTime();
+
 	ReturnContext = 0;
 
-	scheduler(PROCST_APTO);
+	error = scheduler(PROCST_APTO);
 
-	return 0;
+	return error;
 }
 
 int cjoin(int tid)
 {
-	
-	return 0;
+	int error = 0;
+
+	firstTime();
+
+	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
+		return ERROR_INVALID_TID;
+
+	if(searchTID(filaEsperados, tid)) //só pode ter um cjoin para cada thread(tid)
+		return ERROR_TID_USED;
+
+
+
+	return error;
 }
 
-// Função auxiliar que retorna um ticket entre 0 e 255
-int getTicket ()
+int csem_init(csem_t *sem, int count)
 {
-	return Random2() % 255;
-}
+	firstTime();
 
-int module(int num)
-{
-	if (num < 0)
-		return -num;
+	if (sem != NULL)
+	{
+		sem->count = count;	
+		if (!CreateFila2(sem->fila))	
+			return 0;	
+		else 
+			return ERROR_CREATE_FILA; // erro
+	}
 	else 
-		return num;
+		return ERROR_NULL_POINTER; // erro
 }
 
-int firstTime ()
+int cwait(csem_t *sem)
+{
+	int error = 0;	
+
+	firstTime();
+
+	sem->count --;
+
+	//se recurso não está disponível, bloqueamos a thread que está executando
+	if (sem->count < 0)
+		error = block(sem);
+
+	return error;
+}
+
+int csignal(csem_t *sem)
+{
+	int error = 0;
+	
+	firstTime();		
+
+	sem->count ++;	
+	
+	if (sem->count >= 0)
+		error = wakeup(sem);
+
+	return error;
+}
+
+
+void dispatcher(ucontext_t context)
+{
+	setcontext(&context);
+}
+
+int scheduler(int fila)
+{
+	int ticket;
+	TCB_t *winner;
+	TCB_t *threadAux, threadExec;
+	FILA2 winnerAux;
+	int error;
+
+	if (ReturnContext)
+	{
+		ReturnContext = 0;
+		return 0;
+	}
+
+	getcontext(&(threadExec.context));
+	Exec->context = threadExec.context;
+
+	switch(fila)
+	{
+		case PROCST_APTO:
+			//colocar thread executando no apto
+			error = AppendFila2(filaAptos, Exec);
+			break;
+
+		//case PROCST_EXEC:
+		// 	break;
+
+		case PROCST_BLOQ:
+			error = AppendFila2(filaBlock, Exec);
+			break;
+
+		case PROCST_TERMINO:
+			free(Exec->context.uc_stack.ss_sp); //libera Stack
+			free(Exec);							//libera TCB
+			//liberar threads q estão sendo esperadas
+			break;
+	}
+
+	//Sorteia um ticket
+	ticket = getTicket();	
+	
+	// Seta iterador no primeiro da fila
+	if(FirstFila2(filaAptos))
+		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
+	
+	// Inicializa o vencedor com o primeiro da fila 
+	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
+	winnerAux = *filaAptos;
+
+	//Enquanto não chegamos no final da fila
+	while(!NextFila2(filaAptos))
+	{
+		// Percorre a fila 		
+		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);	
+
+		// Se a thread atual está mais próxima que o atual vencedor
+		if (module(threadAux->ticket - ticket) < module(winner->ticket - ticket))
+		{
+			winner = threadAux;
+			winnerAux = *filaAptos;
+		}
+		// senão, se tiverem o mesmo ticket pegamos o menor id
+		else if (module(threadAux->ticket - ticket) == module(winner->ticket - ticket))
+		{
+			if (threadAux->tid < winner->tid)
+			{
+				winner = threadAux;
+				winnerAux = *filaAptos;
+			}
+		}
+	}	
+	Exec = winner;
+	DeleteAtIteratorFila2(&winnerAux); //ele está apontando para o ganhador do processador, deletando da fila de aptos
+
+	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
+	dispatcher(winner->context);
+
+	return error;
+}
+
+
+int firstTime()
 {
 	char *threadStack;
 	TCB_t *mainTCB;
@@ -242,46 +293,6 @@ int firstTime ()
 	return 0;
 }
 
-int csem_init(csem_t *sem, int count)
-{
-	if (sem != NULL)
-	{
-		sem->count = count;	
-		if (!CreateFila2(sem->fila))	
-			return 0;	
-		else 
-			return ERROR_CREATE_FILA; // erro
-	}
-	else 
-		return ERROR_NULL_POINTER; // erro
-}
-
-int cwait(csem_t *sem)
-{
-	int error = 0;	
-
-	sem->count --;
-
-	//se recurso não está disponível, bloqueamos a thread que está executando
-	if (sem->count < 0)
-		error = block(sem);
-
-	return error;
-}
-
-int csignal(csem_t *sem)
-{
-	int error = 0;
-		
-
-	sem->count ++;	
-	
-	if (sem->count >= 0)
-		error = wakeup(sem);
-
-	return error;
-}
-
 int wakeup(csem_t *sem) 
 {
 	int error = 0;
@@ -312,4 +323,54 @@ int block(csem_t *sem)
 	scheduler(PROCST_BLOQ);	
 	
 	return error;
+}
+
+int searchTID(PFILA2 fila, int TID)
+{
+	int *pTID;
+
+	FirstFila2(fila);
+
+	do
+	{
+		pTID = (int*)GetAtIteratorFila2(fila);
+
+		if((*pTID) == TID)
+			return TRUE;
+
+	}while(!NextFila2(fila) && (*pTID)!=TID)
+
+	return FALSE;
+}
+
+int searchTID_TCB(PFILA2 fila, int TID)
+{
+	TCB_t *aux;
+
+	FirstFila2(fila);
+
+	do
+	{
+		aux = (int*)GetAtIteratorFila2(fila);
+
+		if(aux->tid == TID)
+			return TRUE;
+
+	}while(!NextFila2(fila) && (*pTID)!=TID)
+
+	return FALSE;
+}
+
+// Função auxiliar que retorna um ticket entre 0 e 255
+int getTicket()
+{
+	return Random2() % 255;
+}
+
+int module(int num)
+{
+	if (num < 0)
+		return -num;
+	else 
+		return num;
 }
