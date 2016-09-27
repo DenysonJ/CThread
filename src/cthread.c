@@ -399,7 +399,7 @@ int searchTID(PFILA2 fila, int TID)
 		if(pTID->tid_esperado == TID)
 			return TRUE;
 
-	}while(!NextFila2(fila) && (*pTID)!=TID);
+	}while(!NextFila2(fila));
 
 	return FALSE;
 }
