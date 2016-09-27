@@ -209,7 +209,7 @@ int scheduler(int fila)
 	TCB_t *threadAux;
 	ucontext_t context;
 	FILA2 winnerAux;
-	int error;
+	int error, apto = 0;
 
 	getcontext(&context);
 
@@ -225,7 +225,7 @@ int scheduler(int fila)
 	{
 		case PROCST_APTO:
 			//colocar thread executando no apto
-			error = AppendFila2(filaAptos, (void*)Exec);
+			apto = 1;
 			break;
 
 		case PROCST_BLOQ:
@@ -297,7 +297,11 @@ int scheduler(int fila)
 				winnerAux = *filaAptos;
 			}
 		}
-	}	
+	}
+
+	if(apto)
+		error = AppendFila2(filaAptos, (void*)Exec);
+
 	Exec = winner;
 	DeleteAtIteratorFila2(&winnerAux); //ele está apontando para o ganhador do processador, deletando da fila de aptos
 
