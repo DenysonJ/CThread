@@ -270,19 +270,23 @@ int scheduler(int fila)
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
-	winnerAux = *filaAptos;
+	winnerAux = *filaAptos;	
 
 	//Enquanto não chegamos no final da fila
 	while(!NextFila2(filaAptos))
 	{
 		// Percorre a fila 		
-		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);	
+		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);
+
+		if(threadAux == NULL)
+			continue;	
 
 		// Se a thread atual está mais próxima que o atual vencedor
 		if (module(threadAux->ticket - ticket) < module(winner->ticket - ticket))
 		{
 			winner = threadAux;
 			winnerAux = *filaAptos;
+			printf("Escalonador primeiro if\n");
 		}
 		// senão, se tiverem o mesmo ticket pegamos o menor id
 		else if (module(threadAux->ticket - ticket) == module(winner->ticket - ticket))
