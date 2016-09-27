@@ -1,6 +1,7 @@
 #include <ucontext.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "support.h"
 #include "cdata.h"
 #include "cthread.h"
@@ -56,11 +57,14 @@ int ccreate (void* (*start)(void*), void *arg)
 
 	threadStack = malloc(SIGSTKSZ*sizeof(char));
 
-	if (threadStack == NULL)
+	if(threadStack == NULL)
 		return ERROR_ALLOCATION;
 
 	// aloca espaço para estrutura da thread
 	threadTCB = malloc(sizeof(TCB_t));
+
+	if(threadTCB == NULL)
+		return ERROR_ALLOCATION;
 	
 	// inicializa a o TCB da thread
 	threadTCB->tid    = currentTid;
@@ -83,11 +87,10 @@ int ccreate (void* (*start)(void*), void *arg)
 	makecontext(&threadContext, (void*)start, 1, arg);
 
 	threadTCB->context = threadContext;
+	threadTCB->tid = PROCST_APTO;
 
 	//coloca na fila de apto
 	error = AppendFila2(filaAptos, threadTCB);
-
-	threadTCB->tid = PROCST_APTO;
 	
 	if (error != FALSE)
 		return ERROR;
@@ -113,6 +116,7 @@ int cyield(void)
 int cjoin(int tid)
 {
 	int error = 0;
+	TID_t* node;
 
 	error = firstTime();
 	if(error)
@@ -121,11 +125,18 @@ int cjoin(int tid)
 	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
 		return ERROR_INVALID_TID;
 
-	if(searchTID(filaEsperados, tid) == TRUE) //só pode ter um cjoin para cada thread(tid)
+	if(searchTID(filaEsperados, tid)   ) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
 
 	if(searchTID(filaTerm, tid) == TRUE) //thread já terminou
 		return ERROR_INVALID_TID;
+
+	node = malloc(sizeof(TID_t));
+
+	node->tid_esperado = tid;
+	node->tid_cjoin = Exec->tid;
+
+	AppendFila2(filaEsperados, (void*)node);
 
 	error = scheduler(PROCST_BLOQ);
 
@@ -195,9 +206,12 @@ int scheduler(int fila)
 {
 	int ticket;
 	TCB_t *winner;
-	TCB_t *threadAux, threadExec;
+	TCB_t *threadAux;
+	ucontext_t context;
 	FILA2 winnerAux;
 	int error;
+
+	getcontext(&context);
 
 	if (ReturnContext)
 	{
@@ -205,25 +219,21 @@ int scheduler(int fila)
 		return 0;
 	}
 
-	getcontext(&(threadExec.context));
-	Exec->context = threadExec.context;
+	Exec->context = context;
 
 	switch(fila)
 	{
 		case PROCST_APTO:
 			//colocar thread executando no apto
-			error = AppendFila2(filaAptos, Exec);
+			error = AppendFila2(filaAptos, (void*)Exec);
 			break;
 
-		//case PROCST_EXEC:
-		// 	break;
-
 		case PROCST_BLOQ:
-			error = AppendFila2(filaBlock, Exec);
+			error = AppendFila2(filaBlock, (void*)Exec);
 			break;
 
 		case PROCST_TERMINO:
-			error = AppendFila2(filaTerm, Exec->tid);
+			error = AppendFila2(filaTerm, (void*)Exec->tid);
 
 			if(searchTID(filaEsperados, Exec->tid) == TRUE) //tinha um cjoin para esta thread
 			{
@@ -335,8 +345,7 @@ int firstTime()
 	mainTCB->tid    = 0; //main deve ter tid zero (especificação)
 	mainTCB->state  = PROCST_EXEC;
 	mainTCB->ticket = getTicket();
-	// mainTCB->context setar uc_link?
-
+	
 	Exec = mainTCB;
 
 	//contexto da main será setado no escalonador, quando ela "perder o controle" do processador
@@ -378,16 +387,16 @@ int block(csem_t *sem)
 
 int searchTID(PFILA2 fila, int TID)
 {
-	int *pTID;
+	TID_t *pTID;
 
 	if(FirstFila2(fila))
 		return ERROR_INVALID_FILA;
 
 	do
 	{
-		pTID = (int*)GetAtIteratorFila2(fila);
+		pTID = (TID_t*)GetAtIteratorFila2(fila);
 
-		if((*pTID) == TID)
+		if(pTID->tid_esperado == TID)
 			return TRUE;
 
 	}while(!NextFila2(fila) && (*pTID)!=TID);
@@ -395,6 +404,7 @@ int searchTID(PFILA2 fila, int TID)
 	return FALSE;
 }
 
+/*
 TCB_t* searchTCB(PFILA2 fila, int TID)
 {
 	TCB_t *aux;
@@ -409,10 +419,11 @@ TCB_t* searchTCB(PFILA2 fila, int TID)
 		if(aux->tid == TID)
 			return TRUE;
 
-	}while(!NextFila2(fila) && (*pTID)!=TID);
+	}while(!NextFila2(fila) && (*aux)!=TID);
 
 	return FALSE;
 }
+*/
 
 int deleteFila(PFILA2 fila)
 {
