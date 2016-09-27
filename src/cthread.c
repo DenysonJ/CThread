@@ -219,7 +219,8 @@ int scheduler(int fila)
 	{
 		printf("escalonador return context\n"); 
 		ReturnContext = 0;
-		return 0;
+		if(fila != PROCST_TERMINO)
+			return 0;
 	}
 
 	Exec->context = context;
