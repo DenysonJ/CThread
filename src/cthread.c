@@ -268,18 +268,15 @@ int scheduler(int fila)
 		//desalocar filas
 		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
 	}
-	printf("Antes do get\n");
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
 	winnerAux = *filaAptos;	
 
-	printf("Depois do get\n");
-
 	//Enquanto não chegamos no final da fila
 	while(!NextFila2(filaAptos))
 	{
-		printf("Dentro do while\n");
+
 		// Percorre a fila 		
 		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);
 
@@ -291,7 +288,6 @@ int scheduler(int fila)
 		{
 			winner = threadAux;
 			winnerAux = *filaAptos;
-			printf("Escalonador primeiro if\n");
 		}
 		// senão, se tiverem o mesmo ticket pegamos o menor id
 		else if (module(threadAux->ticket - ticket) == module(winner->ticket - ticket))
@@ -304,22 +300,18 @@ int scheduler(int fila)
 		}
 	}
 	
-	printf("Depois do while\n");
 
 	if(apto)
 	{
 		error = AppendFila2(filaAptos, (void*)Exec);
-		printf("If apto \n");
 	}
 
 	Exec = winner;
 	
-	DeleteAtIteratorFila2(); //ele está apontando para o ganhador do processador, deletando da fila de aptos
+	deletTCBFila(filaAptos, winner); //ele está apontando para o ganhador do processador, deletando da fila de aptos
 
 	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);
-
-	printf("Chegou aqui 3\n");
 
 	return error;
 }
@@ -417,6 +409,9 @@ int searchTID(PFILA2 fila, int TID)
 	{
 		pTID = (TID_t*)GetAtIteratorFila2(fila);
 
+		if(pTID == NULL)
+			continue;
+
 		if(pTID->tid_esperado == TID)
 			return TRUE;
 
@@ -458,6 +453,37 @@ int deleteFila(PFILA2 fila)
 		} while(!FirstFila2(fila));
 
 		return 0;
+	}
+	else
+		return ERROR_NULL_POINTER;
+}
+
+int deletTCBFila(PFILA2 fila, TCB_t *tcb)
+{
+	TCB_t *aux;
+
+	if(fila)
+	{
+		FirstFila2(fila);
+
+		do
+		{
+
+			aux = (TCB_t*)GetAtIteratorFila2(fila);
+
+			if(aux == NULL)
+				continue;
+
+			if(aux->tid == tcb->tid)
+			{
+				DeleteAtIteratorFila2(fila);
+				return 0;
+			}
+
+
+		}while(!NextFila2(fila));
+
+		return ERROR_NOT_FOUND;
 	}
 	else
 		return ERROR_NULL_POINTER;

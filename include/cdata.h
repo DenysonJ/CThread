@@ -24,6 +24,7 @@
 #define ERROR_TID_USED -5
 #define ERROR_INVALID_TID -6
 #define ERROR_INVALID_FILA -7
+#define ERROR_NOT_FOUND -8
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct s_TCB { 
