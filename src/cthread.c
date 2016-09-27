@@ -376,9 +376,10 @@ int wakeup(csem_t *sem)
 	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
 	if (sem->fila != NULL)
 	{
-		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila));	//getatiterator
-		error = DeleteAtIteratorFila2(sem->fila) + error;		
-		//deletar da fila de bloqueados
+		error = deletTCBFila(filaBlock, (TCB_t*)GetAtiIteratorFila2(sem->fila));
+	
+		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila)) + error;	//getatiterator
+		error = DeleteAtIteratorFila2(sem->fila) + error;			
 	}
 
 	return error;	
