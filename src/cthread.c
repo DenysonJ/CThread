@@ -211,21 +211,16 @@ int scheduler(int fila)
 	FILA2 winnerAux;
 	int error, apto = 0;
 
-	getcontext(&context);
-	
-	printf("escalonador\n");    
+	getcontext(&context);   
 
 	if (ReturnContext)
 	{
-		printf("escalonador return context\n"); 
 		ReturnContext = 0;
 		if(fila != PROCST_TERMINO)
 			return 0;
 	}
 
 	Exec->context = context;
-
-	printf("%d \n", fila);
 
 	switch(fila)
 	{
@@ -239,7 +234,6 @@ int scheduler(int fila)
 			break;
 
 		case PROCST_TERMINO:
-			printf("Case término\n");
 			error = AppendFila2(filaTerm, (void*)Exec->tid);
 
 			if(searchTID(filaEsperados, Exec->tid) == TRUE) //tinha um cjoin para esta thread
@@ -274,14 +268,18 @@ int scheduler(int fila)
 		//desalocar filas
 		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
 	}
+	printf("Antes do get\n");
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
 	winnerAux = *filaAptos;	
 
+	printf("Depois do get\n");
+
 	//Enquanto não chegamos no final da fila
 	while(!NextFila2(filaAptos))
 	{
+		printf("Dentro do while\n");
 		// Percorre a fila 		
 		threadAux = (TCB_t*)GetAtIteratorFila2(filaAptos);
 
@@ -305,6 +303,8 @@ int scheduler(int fila)
 			}
 		}
 	}
+	
+	printf("Depois do while\n");
 
 	if(apto)
 	{
@@ -313,10 +313,13 @@ int scheduler(int fila)
 	}
 
 	Exec = winner;
-	DeleteAtIteratorFila2(&winnerAux); //ele está apontando para o ganhador do processador, deletando da fila de aptos
+	
+	DeleteAtIteratorFila2(); //ele está apontando para o ganhador do processador, deletando da fila de aptos
 
 	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);
+
+	printf("Chegou aqui 3\n");
 
 	return error;
 }
