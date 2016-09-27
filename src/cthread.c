@@ -212,14 +212,19 @@ int scheduler(int fila)
 	int error, apto = 0;
 
 	getcontext(&context);
+	
+	printf("escalonador\n");    
 
 	if (ReturnContext)
 	{
+		printf("escalonador return context\n"); 
 		ReturnContext = 0;
 		return 0;
 	}
 
 	Exec->context = context;
+
+	printf("%d \n", fila);
 
 	switch(fila)
 	{
@@ -233,6 +238,7 @@ int scheduler(int fila)
 			break;
 
 		case PROCST_TERMINO:
+			printf("Case término\n");
 			error = AppendFila2(filaTerm, (void*)Exec->tid);
 
 			if(searchTID(filaEsperados, Exec->tid) == TRUE) //tinha um cjoin para esta thread
@@ -300,7 +306,10 @@ int scheduler(int fila)
 	}
 
 	if(apto)
+	{
 		error = AppendFila2(filaAptos, (void*)Exec);
+		printf("If apto \n");
+	}
 
 	Exec = winner;
 	DeleteAtIteratorFila2(&winnerAux); //ele está apontando para o ganhador do processador, deletando da fila de aptos
