@@ -87,7 +87,7 @@ int ccreate (void* (*start)(void*), void *arg)
 	makecontext(&threadContext, (void*)start, 1, arg);
 
 	threadTCB->context = threadContext;
-	threadTCB->tid = PROCST_APTO;
+	threadTCB->state   = PROCST_APTO;
 
 	//coloca na fila de apto
 	error = AppendFila2(filaAptos, threadTCB);
