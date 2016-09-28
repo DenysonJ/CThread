@@ -26,23 +26,26 @@ void bye(char* string)
 
 int main()
 {
-	int tid1, tid2, tid3, error;
+	int tid1, tid2, tid3, error, i;
 	
 	tid1 = ccreate((void*)hello, (void*)NULL);
 	tid2 = ccreate((void*)nonono, (void*)5);
-	printf("TID1: %d \n", tid1);
-	printf("TID2: %d \n", tid2);
+	printf("Main \tTID1: %d \n", tid1);
+	printf("Main \tTID2: %d \n", tid2);
 	
 	error = cyield();
 	
-	printf("cyield returned: %d\n", error);
+	printf("Main \tcyield returned: %d\n", error);
 	
 	tid3 = ccreate((void*)bye, (void*)"Thread finishing and saying goodbye!");
-	printf("TID: %d \n", tid3);
+	printf("Main \tTID: %d \n", tid3);
 	
-	error = cyield();
+	for(i = 0; i < 5; i++)
+	{
+		error = cyield();
 	
-	printf("cyield returned: %d\n", error);
+		printf("Main \tcyield returned: %d\n", error);
+	}
 
-
+	return 0;
 }

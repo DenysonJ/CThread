@@ -115,7 +115,7 @@ int cyield(void)
 
 int cjoin(int tid)
 {
-	int error = 0;
+	int error = 0, exist;
 	TID_t* node;
 
 	error = firstTime();
@@ -124,8 +124,10 @@ int cjoin(int tid)
 
 	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
 		return ERROR_INVALID_TID;
-
-	if(searchTID_struct(filaEsperados, tid) > 0) //só pode ter um cjoin para cada thread(tid)
+		
+	exist = searchTID_struct(filaEsperados, tid);
+	
+	if(exist != FALSE) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
 
 	if(searchTID_int(filaTerm, tid) == TRUE) //thread já terminou
@@ -256,19 +258,28 @@ int scheduler(int fila)
 	// Seta iterador no primeiro da fila
 	if(FirstFila2(filaAptos))
 	{
-		free(filaAptos);
-		if(GetAtIteratorFila2(filaBlock)!=NULL)
+		if(apto)
 		{
-			printf("Ainda possuem threads bloqueadas, mas nenhuma thread apta a executar\n");
+			//Nesse caso, só há a thread que chamou o cyield para executar e ela não está na fila de aptos, mas executando
+			ReturnContext = 1; 
+			dispatcher(Exec->context);
 		}
-		deleteFila(filaBlock);
-		deleteFila(filaEsperados);
-		deleteFila(filaTerm);
-		free(filaBlock);
-		free(filaEsperados);
-		free(filaTerm);
-		//desalocar filas
-		exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
+		else
+		{
+			free(filaAptos);
+			if(GetAtIteratorFila2(filaBlock)!=NULL)
+			{
+				printf("Ainda possuem threads bloqueadas, mas nenhuma thread apta a executar\n");
+			}
+			deleteFila(filaBlock);
+			deleteFila(filaEsperados);
+			deleteFila(filaTerm);
+			free(filaBlock);
+			free(filaEsperados);
+			free(filaTerm);
+			//desalocar filas
+			exit(0); //fila deve estar vazia logo posso sair do programa (não há threads para executar)
+		}
 	}
 	
 	// Inicializa o vencedor com o primeiro da fila 
@@ -402,8 +413,13 @@ int searchTID_struct(PFILA2 fila, int TID)
 {
 	TID_t *pTID;
 
-	if(FirstFila2(fila))
-		return ERROR_INVALID_FILA;
+	if(FirstFila2(fila)) //se não tem ninguem da erro
+	{
+		if(fila!=NULL)
+			return FALSE;
+		else
+			return ERROR_INVALID_FILA;
+	}
 
 	do
 	{
@@ -429,7 +445,7 @@ int searchTID_int(PFILA2 fila, int TID)
 
 	do
 	{
-		pTID = (TID_t*)GetAtIteratorFila2(fila);
+		pTID = (int*)GetAtIteratorFila2(fila);
 
 		if(pTID == NULL)
 			continue;
@@ -448,7 +464,7 @@ TCB_t* searchTCB(PFILA2 fila, int TID)
 	TCB_t *aux;
 
 	if(FirstFila2(fila))
-		return ERROR_INVALID_FILA;
+		return NULL;
 
 	do
 	{
@@ -457,7 +473,7 @@ TCB_t* searchTCB(PFILA2 fila, int TID)
 		if(aux->tid == TID)
 			return aux;
 
-	}while(!NextFila2(fila) && (*aux)!=TID);
+	}while(!NextFila2(fila));
 
 	return NULL;
 }
