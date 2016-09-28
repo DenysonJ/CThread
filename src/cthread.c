@@ -125,10 +125,10 @@ int cjoin(int tid)
 	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
 		return ERROR_INVALID_TID;
 
-	if(searchTID(filaEsperados, tid)   ) //só pode ter um cjoin para cada thread(tid)
+	if(searchTID_struct(filaEsperados, tid) > 0) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
 
-	if(searchTID(filaTerm, tid) == TRUE) //thread já terminou
+	if(searchTID_int(filaTerm, tid) == TRUE) //thread já terminou
 		return ERROR_INVALID_TID;
 
 	node = malloc(sizeof(TID_t));
@@ -204,11 +204,10 @@ void dispatcher(ucontext_t context)
 
 int scheduler(int fila)
 {
-	int ticket;
+	int ticket, tid;
 	TCB_t *winner;
 	TCB_t *threadAux;
 	ucontext_t context;
-	FILA2 winnerAux;
 	int error, apto = 0;
 
 	getcontext(&context);   
@@ -236,10 +235,13 @@ int scheduler(int fila)
 		case PROCST_TERMINO:
 			error = AppendFila2(filaTerm, (void*)Exec->tid);
 
-			if(searchTID(filaEsperados, Exec->tid) == TRUE) //tinha um cjoin para esta thread
+			tid = searchTID_struct(filaEsperados, Exec->tid);
+			if(tid > 0) //tinha um cjoin para esta thread
 			{
 				//liberar thread q está esperando
-				//como saber qual estava esperando está?
+				threadAux = searchTCB(filaBlock, tid);
+				error += AppendFila2(filaAptos, threadAux);
+				error += deletTCBFila(filaBlock, threadAux);
 			}
 
 			free(Exec->context.uc_stack.ss_sp); //libera Stack
@@ -271,7 +273,6 @@ int scheduler(int fila)
 	
 	// Inicializa o vencedor com o primeiro da fila 
 	winner = (TCB_t*)GetAtIteratorFila2(filaAptos);
-	winnerAux = *filaAptos;	
 
 	//Enquanto não chegamos no final da fila
 	while(!NextFila2(filaAptos))
@@ -287,7 +288,6 @@ int scheduler(int fila)
 		if (module(threadAux->ticket - ticket) < module(winner->ticket - ticket))
 		{
 			winner = threadAux;
-			winnerAux = *filaAptos;
 		}
 		// senão, se tiverem o mesmo ticket pegamos o menor id
 		else if (module(threadAux->ticket - ticket) == module(winner->ticket - ticket))
@@ -295,7 +295,6 @@ int scheduler(int fila)
 			if (threadAux->tid < winner->tid)
 			{
 				winner = threadAux;
-				winnerAux = *filaAptos;
 			}
 		}
 	}
@@ -376,7 +375,7 @@ int wakeup(csem_t *sem)
 	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
 	if (sem->fila != NULL)
 	{
-		error = deletTCBFila(filaBlock, (TCB_t*)GetAtiIteratorFila2(sem->fila));
+		error = deletTCBFila(filaBlock, (TCB_t*)GetAtIteratorFila2(sem->fila));
 	
 		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila)) + error;	//getatiterator
 		error = DeleteAtIteratorFila2(sem->fila) + error;			
@@ -399,7 +398,7 @@ int block(csem_t *sem)
 	return error;
 }
 
-int searchTID(PFILA2 fila, int TID)
+int searchTID_struct(PFILA2 fila, int TID)
 {
 	TID_t *pTID;
 
@@ -414,6 +413,28 @@ int searchTID(PFILA2 fila, int TID)
 			continue;
 
 		if(pTID->tid_esperado == TID)
+			return pTID->tid_cjoin;
+
+	}while(!NextFila2(fila));
+
+	return FALSE;
+}
+
+int searchTID_int(PFILA2 fila, int TID)
+{
+	int *pTID;
+
+	if(FirstFila2(fila))
+		return ERROR_INVALID_FILA;
+
+	do
+	{
+		pTID = (TID_t*)GetAtIteratorFila2(fila);
+
+		if(pTID == NULL)
+			continue;
+
+		if((*pTID) == TID)
 			return TRUE;
 
 	}while(!NextFila2(fila));
@@ -421,7 +442,7 @@ int searchTID(PFILA2 fila, int TID)
 	return FALSE;
 }
 
-/*
+
 TCB_t* searchTCB(PFILA2 fila, int TID)
 {
 	TCB_t *aux;
@@ -434,13 +455,13 @@ TCB_t* searchTCB(PFILA2 fila, int TID)
 		aux = (TCB_t*)GetAtIteratorFila2(fila);
 
 		if(aux->tid == TID)
-			return TRUE;
+			return aux;
 
 	}while(!NextFila2(fila) && (*aux)!=TID);
 
-	return FALSE;
+	return NULL;
 }
-*/
+
 
 int deleteFila(PFILA2 fila)
 {
