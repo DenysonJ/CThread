@@ -8,7 +8,9 @@ void dispatcher(ucontext_t thread);
 int  scheduler();
 int  wakeup(csem_t *sem);
 int  block(csem_t *sem);
-int  searchTID(PFILA2 fila, int TID);
+int searchTID_struct(PFILA2 fila, int TID);
+int searchTID_int(PFILA2 fila, int TID);
+TCB_t* searchTCB(PFILA2 fila, int TID);
 int  deleteFila(PFILA2 fila);
 int  deletTCBFila(PFILA2 fila, TCB_t *tcb);
 
