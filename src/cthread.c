@@ -131,7 +131,7 @@ int cjoin(int tid)
 	
 	//printf("2\n");
 	
-	if(exist != FALSE) //só pode ter um cjoin para cada thread(tid)
+	if(exist > 0) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
 		
 	//printf("3\n");
@@ -152,7 +152,7 @@ int cjoin(int tid)
 
 	AppendFila2(filaEsperados, (void*)node);
 	
-	printf("7\n");
+	//printf("7\n");
 	
 	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
@@ -265,7 +265,7 @@ int scheduler(int fila)
 			error = AppendFila2(filaTerm, (void*)tid_termino);
 
 			tid = searchTID_struct(filaEsperados, Exec->tid);
-			if(tid >= 0) //tinha um cjoin para esta thread
+			if(tid > 0) //tinha um cjoin para esta thread
 			{
 				//liberar thread q está esperando
 				threadAux = searchTCB(filaBlock, tid);
