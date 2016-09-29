@@ -154,7 +154,7 @@ int cjoin(int tid)
 	
 	printf("\a\n");
 	
-	int printFilaTID(filaEsperados);
+	printFilaTID(filaEsperados);
 	
 	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
