@@ -447,6 +447,10 @@ int wakeup(csem_t *sem)
 	{
 		//printf("wakeup 3\n");
 		aux = (TCB_t*)GetAtIteratorFila2(sem->fila);
+		if(aux == NULL)
+		{
+			return ERROR_INVALID_FILA;
+		}
 		printf("wakeup depois delete\n");
 		error = deletTCBFila(filaBlock, aux);
 		printf("wakeup depois delete\n");
