@@ -121,26 +121,42 @@ int cjoin(int tid)
 	error = firstTime();
 	if(error)
 		return error;
+		
+	printf("1\n");
 
 	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
 		return ERROR_INVALID_TID;
 		
 	exist = searchTID_struct(filaEsperados, tid);
 	
+	printf("2\n");
+	
 	if(exist != FALSE) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
+		
+	printf("3\n");
 
 	if(searchTID_int(filaTerm, tid) == TRUE) //thread já terminou
 		return ERROR_INVALID_TID;
+		
+	printf("4\n");
 
 	node = malloc(sizeof(TID_t));
+	
+	printf("5\n");
 
 	node->tid_esperado = tid;
 	node->tid_cjoin = Exec->tid;
+	
+	printf("6\n");
 
 	AppendFila2(filaEsperados, (void*)node);
+	
+	printf("7\n");
 
 	error = scheduler(PROCST_BLOQ);
+	
+	printf("8\n");
 
 	return error;
 }
@@ -212,6 +228,7 @@ int scheduler(int fila)
 	TCB_t *threadAux;
 	ucontext_t context;
 	int error, apto = 0;
+	int *tid_termino;
 
 	getcontext(&context);   
 
@@ -236,15 +253,22 @@ int scheduler(int fila)
 			break;
 
 		case PROCST_TERMINO:
-			error = AppendFila2(filaTerm, (void*)Exec->tid);
+			tid_termino = (int*)malloc(sizeof(int));
+			
+			*tid_termino = Exec->tid;
+		
+			error = AppendFila2(filaTerm, (void*)tid_termino);
 
 			tid = searchTID_struct(filaEsperados, Exec->tid);
-			if(tid > 0) //tinha um cjoin para esta thread
+			if(tid >= 0) //tinha um cjoin para esta thread
 			{
 				//liberar thread q está esperando
 				threadAux = searchTCB(filaBlock, tid);
-				error += AppendFila2(filaAptos, threadAux);
-				error += deletTCBFila(filaBlock, threadAux);
+				if(threadAux != NULL)
+				{
+					error += AppendFila2(filaAptos, threadAux);
+					error += deletTCBFila(filaBlock, threadAux);
+				}
 			}
 
 			free(Exec->context.uc_stack.ss_sp); //libera Stack
