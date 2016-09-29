@@ -153,7 +153,7 @@ int cjoin(int tid)
 	AppendFila2(filaEsperados, (void*)node);
 	
 	//printFilaTID(filaEsperados);
-	printf("\a\n");
+	printf("\n"); //testamos de tudo, debugamos com o gdb, o erro vem do setcontext(), mas o contexto de quando funciona (com o printf)  e quando não funciona são exatamente iguais
 	
 	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
@@ -194,12 +194,12 @@ int cwait(csem_t *sem)
 
 	sem->count --;
 	
-	printf("cwait 1\n");
+	//printf("cwait 1\n");
 
 	//se recurso não está disponível, bloqueamos a thread que está executando
 	if (sem->count < 0)
 	{
-		printf("cwait 2\n");
+		//printf("cwait 2\n");
 		error = block(sem);
 	}
 
@@ -214,13 +214,13 @@ int csignal(csem_t *sem)
 	if(error)
 		return error;
 		
-	printf("csignal 1\n");		
+	//printf("csignal 1\n");		
 
 	sem->count ++;	
 	
 	if (sem->count >= 0)
 	{
-		printf("csignal 2\n");
+		//printf("csignal 2\n");
 		error = wakeup(sem);
 	}
 	
@@ -374,7 +374,7 @@ int scheduler(int fila)
 	
 	deletTCBFila(filaAptos, winner); //ele está apontando para o ganhador do processador, deletando da fila de aptos
 	
-	//printf("Cheguei\n");
+	//printf("\n");
 	
 	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);
@@ -451,13 +451,13 @@ int wakeup(csem_t *sem)
 		{
 			return ERROR_INVALID_FILA;
 		}
-		printf("wakeup depois delete\n");
+		//printf("wakeup depois delete\n");
 		error = deletTCBFila(filaBlock, aux);
-		printf("wakeup depois delete\n");
+		//printf("wakeup depois delete\n");
 		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila)) + error;	//getatiterator
-		printf("wakeup depois append\n");
+		//printf("wakeup depois append\n");
 		error = DeleteAtIteratorFila2(sem->fila) + error;
-		printf("wakeup 4\n");		
+		//printf("wakeup 4\n");		
 	}
 
 	return error;	
@@ -572,35 +572,35 @@ int deletTCBFila(PFILA2 fila, TCB_t *tcb)
 {
 	TCB_t *aux;
 	
-	printf("deletetcb\n");
+	//printf("deletetcb\n");
 
 	if(fila)
 	{
 		FirstFila2(fila);
-		printf("deletetcb\n");
+		//printf("deletetcb\n");
 
 		do
 		{
 
 			aux = (TCB_t*)GetAtIteratorFila2(fila);
-			printf("deletetcb depois do get\n");
+			//printf("deletetcb depois do get\n");
 
 			if(aux == NULL)
 			{
-				printf("deletetcb aux null\n");
+				//printf("deletetcb aux null\n");
 				continue;
 			}
 			
-			printf("deletetcb antes do acesso aux->tid\n");
+			//printf("deletetcb antes do acesso aux->tid\n");
 
 			if(aux->tid == tcb->tid)
 			{
-				printf("deletetcb achou tcb\n");
+				//printf("deletetcb achou tcb\n");
 				DeleteAtIteratorFila2(fila);
 				return 0;
 			}
 			
-			printf("deletetcb antes do next\n");
+			//printf("deletetcb antes do next\n");
 
 
 		}while(!NextFila2(fila));
