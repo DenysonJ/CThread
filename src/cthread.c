@@ -155,6 +155,7 @@ int csem_init(csem_t *sem, int count)
 
 	if (sem != NULL)
 	{
+		sem->fila = malloc(sizeof(FILA2));
 		sem->count = count;	
 		if (!CreateFila2(sem->fila))	
 			return 0;	
