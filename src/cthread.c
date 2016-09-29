@@ -152,9 +152,8 @@ int cjoin(int tid)
 
 	AppendFila2(filaEsperados, (void*)node);
 	
+	//printFilaTID(filaEsperados);
 	printf("\a\n");
-	
-	printFilaTID(filaEsperados);
 	
 	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
@@ -194,10 +193,15 @@ int cwait(csem_t *sem)
 		return error;
 
 	sem->count --;
+	
+	printf("cwait 1\n");
 
 	//se recurso não está disponível, bloqueamos a thread que está executando
 	if (sem->count < 0)
+	{
+		printf("cwait 2\n");
 		error = block(sem);
+	}
 
 	return error;
 }
@@ -208,13 +212,18 @@ int csignal(csem_t *sem)
 	
 	error = firstTime();
 	if(error)
-		return error;		
+		return error;
+		
+	printf("csignal 1\n");		
 
 	sem->count ++;	
 	
 	if (sem->count >= 0)
+	{
+		printf("csignal 2\n");
 		error = wakeup(sem);
-
+	}
+	
 	return error;
 }
 
@@ -265,16 +274,23 @@ int scheduler(int fila)
 			*tid_termino = Exec->tid;
 		
 			error = AppendFila2(filaTerm, (void*)tid_termino);
+			
+			//printf("escalonador deu append\n");
 
 			tid = searchTID_struct(filaEsperados, Exec->tid);
-			if(tid > 0) //tinha um cjoin para esta thread
+			
+			//printf("searc retornou %d\n", tid);
+			
+			if(tid >= 0) //tinha um cjoin para esta thread
 			{
 				//liberar thread q está esperando
+				//printf("escalonador tinha cjoin\n");
 				threadAux = searchTCB(filaBlock, tid);
 				if(threadAux != NULL)
 				{
 					error += AppendFila2(filaAptos, threadAux);
 					error += deletTCBFila(filaBlock, threadAux);
+					//printf("escalonador desbloqueou thread\n");
 				}
 			}
 
@@ -419,17 +435,25 @@ int firstTime()
 int wakeup(csem_t *sem) 
 {
 	int error = 0;
+	TCB_t* aux;
 
+	//printf("wakeup 1\n");
 	// Primeiro da fila de bloqueados
 	FirstFila2(sem->fila);
+	//printf("wakeup 2\n");
 	
 	// Adiciona esse elemento na fila de aptos e depois o remove da fila de bloqueados do semáforo
 	if (sem->fila != NULL)
 	{
-		error = deletTCBFila(filaBlock, (TCB_t*)GetAtIteratorFila2(sem->fila));
-	
+		//printf("wakeup 3\n");
+		aux = (TCB_t*)GetAtIteratorFila2(sem->fila);
+		printf("wakeup depois delete\n");
+		error = deletTCBFila(filaBlock, aux);
+		printf("wakeup depois delete\n");
 		error = AppendFila2(filaAptos, GetAtIteratorFila2(sem->fila)) + error;	//getatiterator
-		error = DeleteAtIteratorFila2(sem->fila) + error;			
+		printf("wakeup depois append\n");
+		error = DeleteAtIteratorFila2(sem->fila) + error;
+		printf("wakeup 4\n");		
 	}
 
 	return error;	
@@ -452,15 +476,18 @@ int block(csem_t *sem)
 int searchTID_struct(PFILA2 fila, int TID)
 {
 	TID_t *pTID;
+	
+	//printf("search tid %d\n", TID);
 
 	if(FirstFila2(fila)) //se não tem ninguem da erro
 	{
+		//printf("search 1\n");
 		if(fila!=NULL)
-			return FALSE;
+			return ERROR;
 		else
 			return ERROR_INVALID_FILA;
 	}
-
+	//printf("search 2\n");
 	do
 	{
 		pTID = (TID_t*)GetAtIteratorFila2(fila);
@@ -472,8 +499,9 @@ int searchTID_struct(PFILA2 fila, int TID)
 			return pTID->tid_cjoin;
 
 	}while(!NextFila2(fila));
+	//printf("search 3\n");
 
-	return FALSE;
+	return ERROR;
 }
 
 int searchTID_int(PFILA2 fila, int TID)
@@ -539,24 +567,36 @@ int deleteFila(PFILA2 fila)
 int deletTCBFila(PFILA2 fila, TCB_t *tcb)
 {
 	TCB_t *aux;
+	
+	printf("deletetcb\n");
 
 	if(fila)
 	{
 		FirstFila2(fila);
+		printf("deletetcb\n");
 
 		do
 		{
 
 			aux = (TCB_t*)GetAtIteratorFila2(fila);
+			printf("deletetcb depois do get\n");
 
 			if(aux == NULL)
+			{
+				printf("deletetcb aux null\n");
 				continue;
+			}
+			
+			printf("deletetcb antes do acesso aux->tid\n");
 
 			if(aux->tid == tcb->tid)
 			{
+				printf("deletetcb achou tcb\n");
 				DeleteAtIteratorFila2(fila);
 				return 0;
 			}
+			
+			printf("deletetcb antes do next\n");
 
 
 		}while(!NextFila2(fila));
@@ -570,8 +610,10 @@ int deletTCBFila(PFILA2 fila, TCB_t *tcb)
 int printFilaTID(PFILA2 fila)
 {
 	TID_t* aux;
+	
+	printf("printfila \n");
 
-	if(!FirstFila2(fila))
+	if(FirstFila2(fila))
 	{
 		return ERROR;
 	}
@@ -581,7 +623,10 @@ int printFilaTID(PFILA2 fila)
 		{
 			aux = (TID_t*)GetAtIteratorFila2(fila);
 			
-			printf("\n TID esperado: %d\n", aux->tid_esperado);
+			if(aux == NULL)
+				continue;
+			
+			printf("\nTID esperado: %d\n", aux->tid_esperado);
 			printf("TID cjoin   : %d\n", aux->tid_cjoin);
 		}while(!NextFila2(fila));
 		

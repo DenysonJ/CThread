@@ -23,3 +23,6 @@ semaphore: semaphore.c $(LIB_DIR)/libcthread.a
 
 cjoin: cjoin.c $(LIB_DIR)/libcthread.a
 	$(CC) -o cjoin cjoin.c -Wall $(LIB_DIR)/libcthread.a && mv cjoin $(BIN_DIR)
+
+cjoin_co: cjoin_complex.c $(LIB_DIR)/libcthread.a
+	$(CC) -o cjoin_co cjoin_complex.c -Wall $(LIB_DIR)/libcthread.a && mv cjoin_co $(BIN_DIR)
