@@ -152,7 +152,7 @@ int cjoin(int tid)
 
 	AppendFila2(filaEsperados, (void*)node);
 	
-	//printf("7\n");
+	printf("\a\n");
 	
 	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
@@ -252,7 +252,7 @@ int scheduler(int fila)
 			break;
 
 		case PROCST_BLOQ:
-			printf("escalonador block\n");
+			//printf("escalonador block\n");
 			error = AppendFila2(filaBlock, (void*)Exec);
 			break;
 
@@ -286,6 +286,8 @@ int scheduler(int fila)
 	
 	//Sorteia um ticket
 	ticket = getTicket();	
+	
+	//printf("escalonador \n");
 	
 	// Seta iterador no primeiro da fila
 	if(FirstFila2(filaAptos))
@@ -337,6 +339,7 @@ int scheduler(int fila)
 		{
 			if (threadAux->tid < winner->tid)
 			{
+				//printf("winner\n");
 				winner = threadAux;
 			}
 		}
@@ -352,7 +355,9 @@ int scheduler(int fila)
 	Exec = winner;
 	
 	deletTCBFila(filaAptos, winner); //ele está apontando para o ganhador do processador, deletando da fila de aptos
-
+	
+	//printf("Cheguei\n");
+	
 	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);
 
