@@ -13,7 +13,6 @@ int searchTID_int(PFILA2 fila, int TID);
 TCB_t* searchTCB(PFILA2 fila, int TID);
 int  deleteFila(PFILA2 fila);
 int  deletTCBFila(PFILA2 fila, TCB_t *tcb);
-int printFilaTID(PFILA2 fila);
 
 
 #endif
