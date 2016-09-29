@@ -18,13 +18,15 @@ void print_nice()
 
 void nice()
 {
-	int tid_filho;
+	int tid_filho, error;
 	
 	tid_filho = ccreate((void*)print_nice, (void*)NULL);
 	
-	cjoin(tid_filho);
+	printf("Thread nice tid %d\n", tid_filho);
 	
-	printf("Thread nice retornando\n");
+	error = cjoin(tid_filho);
+	
+	printf("Thread nice retornando cjoin: %d\n", error);
 }
 
 int main()
@@ -34,9 +36,10 @@ int main()
 	tid1 = ccreate((void*) bye, (void*)"I am the thread created by thread main");
 	tid2 = ccreate((void*) nice, (void*)NULL);
 	
-	error = cjoin(tid1);
+	printf("tid1 %d\n", tid1);
+	printf("tid2 %d\n", tid2);
 	
-	printf("Aqui\n");
+	error = cjoin(tid1);
 	
 	printf("Main \tcjoin 1 returned: %d\n", error);
 	

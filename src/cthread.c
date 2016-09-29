@@ -122,41 +122,42 @@ int cjoin(int tid)
 	if(error)
 		return error;
 		
-	printf("1\n");
+	//printf("1\n");
 
 	if(tid >= currentTid)        //thread com esse tid ainda não foi criada, logo tid inválido
 		return ERROR_INVALID_TID;
 		
 	exist = searchTID_struct(filaEsperados, tid);
 	
-	printf("2\n");
+	//printf("2\n");
 	
 	if(exist != FALSE) //só pode ter um cjoin para cada thread(tid)
 		return ERROR_TID_USED;
 		
-	printf("3\n");
+	//printf("3\n");
 
 	if(searchTID_int(filaTerm, tid) == TRUE) //thread já terminou
 		return ERROR_INVALID_TID;
 		
-	printf("4\n");
+	//printf("4\n");
 
 	node = malloc(sizeof(TID_t));
 	
-	printf("5\n");
+	//printf("5\n");
 
 	node->tid_esperado = tid;
 	node->tid_cjoin = Exec->tid;
 	
-	printf("6\n");
+	//printf("6\n");
 
 	AppendFila2(filaEsperados, (void*)node);
 	
 	printf("7\n");
-
+	
+	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
 	
-	printf("8\n");
+	//printf("8\n");
 
 	return error;
 }
@@ -234,6 +235,7 @@ int scheduler(int fila)
 
 	if (ReturnContext)
 	{
+		//printf("ReturnContext\n");
 		ReturnContext = 0;
 		if(fila != PROCST_TERMINO)
 			return 0;
@@ -245,14 +247,17 @@ int scheduler(int fila)
 	{
 		case PROCST_APTO:
 			//colocar thread executando no apto
+			//printf("escalonador apto\n");
 			apto = 1;
 			break;
 
 		case PROCST_BLOQ:
+			printf("escalonador block\n");
 			error = AppendFila2(filaBlock, (void*)Exec);
 			break;
 
 		case PROCST_TERMINO:
+			//printf("escalonador termino\n");
 			tid_termino = (int*)malloc(sizeof(int));
 			
 			*tid_termino = Exec->tid;
@@ -276,7 +281,9 @@ int scheduler(int fila)
 
 			break;
 	}
-
+	
+	//printf("escalonador ticket\n");
+	
 	//Sorteia um ticket
 	ticket = getTicket();	
 	
@@ -338,6 +345,7 @@ int scheduler(int fila)
 
 	if(apto)
 	{
+		//printf("escalonador apto 2\n");
 		error = AppendFila2(filaAptos, (void*)Exec);
 	}
 
