@@ -2,22 +2,25 @@
 #include "../include/support.h"
 #include "../include/cthread.h"
 
-void hello()
+void hello(int id)
 {
-	printf("Hello\n");
+	int error;
+
+	printf("Hello %d\n", id);
 }
 
 int main()
 {
-	int tid, error;
+	int tid, i;
 
-	tid = ccreate((void*)hello, (void*)NULL);
-
-	printf("TID: %d \n", tid);
+	for (i = 0; i<4; i++)
+	{
+		tid = ccreate((void*)hello, i);
 	
-	error = cyield();
-
-	printf("cyield returned: %d \n", error);
-
+		printf("TID: %d \n", tid);
+		
+		cyield();
+	}	
+	
 	return 0;
 }

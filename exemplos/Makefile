@@ -5,32 +5,16 @@
 CC=gcc
 LIB_DIR=../lib
 
-all: exemplo mandel teste_vetor barbeiro filosofos prodcons series
+all: cyield  cidentify  semaphore
 
-exemplo: exemplo.c $(LIB_DIR)/libcthread.a
-	$(CC) -o exemplo exemplo.c  -Wall $(LIB_DIR)/libcthread.a
+cyield: cyield.c $(LIB_DIR)/libcthread.a
+	$(CC) -o cyield cyield.c $(LIB_DIR)/libcthread.a -Wall
 
-teste_vetor: teste_vetor.c $(LIB_DIR)/libcthread.a
-	$(CC) -o teste_vetor teste_vetor.c -L$(LIB_DIR) -lcthread -Wall
+cidentify: cidentify.c $(LIB_DIR)/libcthread.a
+	$(CC) -o cidentify cidentify.c $(LIB_DIR)/libcthread.a -Wall
 
-mandel: mandel.c $(LIB_DIR)/libcthread.a
-	$(CC) -o mandel mandel.c -L$(LIB_DIR) -lcthread -lm -Wall
-
-barbeiro: barbeiro.c $(LIB_DIR)/libcthread.a
-	$(CC) -o barbeiro barbeiro.c -L$(LIB_DIR) -lcthread -lm -Wall
-
-filosofos: filosofos.c $(LIB_DIR)/libcthread.a
-	$(CC) -o filosofos filosofos.c -L$(LIB_DIR) -lcthread -lm -Wall
-
-prodcons: prodcons.c $(LIB_DIR)/libcthread.a
-	$(CC) -o prodcons prodcons.c -L$(LIB_DIR) -lcthread -lm -Wall
-
-series: series.c $(LIB_DIR)/libcthread.a
-	$(CC) -o series series.c -L$(LIB_DIR) -lcthread -lm -Wall
+semaphore: semaphore.c $(LIB_DIR)/libcthread.a
+	$(CC) -o semaphore semaphore.c $(LIB_DIR)/libcthread.a -Wall
 
 clean:
-	rm -rf exemplo mandel teste_vetor barbeiro filosofos prodcons series *.o *~
-
-
-
-
+	rm -rf cyield  cidentify  semaphore *.o *~
