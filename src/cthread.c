@@ -153,7 +153,7 @@ int cjoin(int tid)
 	AppendFila2(filaEsperados, (void*)node);
 	
 	//printFilaTID(filaEsperados);
-	printf("\n"); //testamos de tudo, debugamos com o gdb, o erro vem do setcontext(), mas o contexto de quando funciona (com o printf)  e quando não funciona são exatamente iguais
+	printf("\a\n");//testamos de tudo, debugamos com o gdb, o erro vem do setcontext(), mas o contexto de quando funciona (com o printf)  e quando não funciona são exatamente iguais
 	
 	ReturnContext = 0;
 	error = scheduler(PROCST_BLOQ);
@@ -374,7 +374,7 @@ int scheduler(int fila)
 	
 	deletTCBFila(filaAptos, winner); //ele está apontando para o ganhador do processador, deletando da fila de aptos
 	
-	//printf("\n");
+	//printf(" \n");
 	
 	ReturnContext = 1;  //o contexto da thread pode ter sido salva pelo escalonador
 	dispatcher(winner->context);

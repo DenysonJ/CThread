@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
      }
 
     for (i = 0; i < MAX_THR; i++) 
-         cjoin(pid[i]);
+         cyield();
 
     for (i = 0; i < MAX_SIZE; i++) {    
         if ( (i % 20) == 0 )
